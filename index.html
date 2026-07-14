@@ -60,8 +60,8 @@
         <div class="lock-box">
             <h2>Department Access Only</h2>
             <p>Enter fire station password to unlock maps:</p>
-            <input type="password" id="pass-input" placeholder="••••••••" onkeydown="if(event.key==='Enter') checkPassword()"><br>
-            <button onclick="checkPassword()">Verify Credentials</button>
+            <input type="password" id="pass-input" placeholder="••••••••"><br>
+            <button id="verify-btn">Verify Credentials</button>
             <p id="error-msg">Access Denied. Incorrect Code.</p>
         </div>
     </div>
@@ -114,14 +114,17 @@
         let activeMode = 'reveal'; 
         let labelMarkers = [];
 
-        function checkPassword() {
+        // WIRE UP PASSSWORD VERIFICATION DIRECTLY
+        document.getElementById("verify-btn").addEventListener("click", runVerification);
+        document.getElementById("pass-input").addEventListener("keydown", function(e) {
+            if (e.key === "Enter") { runVerification(); }
+        });
+
+        function runVerification() {
             const userInput = document.getElementById("pass-input").value;
             if (userInput === DEPT_PASSWORD) {
-                // Instantly wipe out lock wall and display layout display grid
                 document.getElementById("password-screen").style.display = "none";
                 document.getElementById("main-container").style.display = "flex";
-                
-                // Initialize map frames safely once visible
                 initMap();
                 buildTestingInterface();
             } else {
@@ -185,4 +188,3 @@
                     const el = document.createElement('div');
                     el.className = 'drag-item';
                     el.innerText = street.name;
-                    el.draggable = true;
