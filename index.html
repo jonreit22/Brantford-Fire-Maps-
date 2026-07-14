@@ -74,12 +74,12 @@
                 <p>Zone 1BC Street Knowledge Practice</p>
             </div>
             <div>
-                <button class="mode-btn active" id="btn-reveal" onclick="changeMode('reveal')">1. Click & Reveal</button>
-                <button class="mode-btn" id="btn-drag" onclick="changeMode('drag')">2. Word Bank Drag</button>
-                <button class="mode-btn" id="btn-fill" onclick="changeMode('fill')">3. Fill in Blanks</button>
+                <button class="mode-btn active" id="btn-reveal">1. Click & Reveal</button>
+                <button class="mode-btn" id="btn-drag">2. Word Bank Drag</button>
+                <button class="mode-btn" id="btn-fill">3. Fill in Blanks</button>
             </div>
             <div>
-                <button class="reset-btn" onclick="resetBoard()">Reset & Return to Blanks</button>
+                <button class="reset-btn" id="btn-global-reset">Reset & Return to Blanks</button>
             </div>
         </div>
 
@@ -114,11 +114,16 @@
         let activeMode = 'reveal'; 
         let labelMarkers = [];
 
-        // WIRE UP PASSSWORD VERIFICATION DIRECTLY
+        // WIRE UP INTERFACE EVENTS AND NAVIGATION SAFELY VIA JAVASCRIPT DIRECTLY
         document.getElementById("verify-btn").addEventListener("click", runVerification);
         document.getElementById("pass-input").addEventListener("keydown", function(e) {
             if (e.key === "Enter") { runVerification(); }
         });
+
+        document.getElementById("btn-reveal").addEventListener("click", function() { changeMode('reveal'); });
+        document.getElementById("btn-drag").addEventListener("click", function() { changeMode('drag'); });
+        document.getElementById("btn-fill").addEventListener("click", function() { changeMode('fill'); });
+        document.getElementById("btn-global-reset").addEventListener("click", resetBoard);
 
         function runVerification() {
             const userInput = document.getElementById("pass-input").value;
@@ -134,6 +139,7 @@
         }
 
         function initMap() {
+            if (map) return; // Prevent duplicate init loops
             map = L.map('map', {
                 center: [43.1465, -80.2630],
                 zoom: 15,
@@ -176,15 +182,7 @@
                 streetData.forEach(street => {
                     let customIcon = L.divIcon({
                         className: 'clear-layer',
-                        html: `<div class="map-label-box blank-reveal" id="reveal-${street.id}" onclick="revealLabel('${street.id}')">???</div>`
+                        html: `<div class="map-label-box blank-reveal" id="reveal-${street.id}">???</div>`
                     });
                     let marker = L.marker(street.pinCoords, { icon: customIcon }).addTo(map);
-                    labelMarkers.push(marker);
-                });
-            } 
-            else if (activeMode === 'drag') {
-                let shuffledStreets = [...streetData].sort(() => Math.random() - 0.5);
-                shuffledStreets.forEach(street => {
-                    const el = document.createElement('div');
-                    el.className = 'drag-item';
-                    el.innerText = street.name;
+                    
