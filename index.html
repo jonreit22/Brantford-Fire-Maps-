@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Station Response Training Portal</title>
     <!-- Leaflet Mapping Stylesheet -->
-    <link rel="stylesheet" href="https://unpkg.com" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #111; color: #fff; overflow: hidden; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: 'Segoe UI', sans-serif; background-color: #111; color: #fff; overflow: hidden; }
         
         /* Secure Gatekeeper Screen */
         #password-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -87,20 +87,17 @@
             <div id="map"></div>
             <div id="word-bank-panel">
                 <h3>Street Bank</h3>
-                <div class="word-bank-pool" id="drag-pool">
-                    <!-- Words generated automatically by code -->
-                </div>
+                <div class="word-bank-pool" id="drag-pool"></div>
             </div>
         </div>
     </div>
 
     <!-- Leaflet Script Frame Engine -->
-    <script src="https://unpkg.com"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // DEPARTMENT ACCESS SECURITY KEY
+        // CORE CONFIGURATION
         const DEPT_PASSWORD = "BFD123"; 
 
-        // Target Street Coordinates inside Zone 1BC (Downtown Brantford Area)
         const streetData = [
             { id: "st-paul", name: "St. Paul Ave", pinCoords: [43.1492, -80.2645] },
             { id: "charing-cross", name: "Charing Cross St", pinCoords: [43.1521, -80.2602] },
@@ -114,60 +111,39 @@
         let activeMode = 'reveal'; 
         let labelMarkers = [];
 
-        // WIRE UP INTERFACE EVENTS AND NAVIGATION SAFELY VIA JAVASCRIPT DIRECTLY
-        document.getElementById("verify-btn").addEventListener("click", runVerification);
-        document.getElementById("pass-input").addEventListener("keydown", function(e) {
-            if (e.key === "Enter") { runVerification(); }
-        });
-
-        document.getElementById("btn-reveal").addEventListener("click", function() { changeMode('reveal'); });
-        document.getElementById("btn-drag").addEventListener("click", function() { changeMode('drag'); });
-        document.getElementById("btn-fill").addEventListener("click", function() { changeMode('fill'); });
-        document.getElementById("btn-global-reset").addEventListener("click", resetBoard);
-
-        function runVerification() {
+        // SELF-CONTAINED INTERFACE WIRING
+        document.getElementById("verify-btn").onclick = function() {
             const userInput = document.getElementById("pass-input").value;
             if (userInput === DEPT_PASSWORD) {
                 document.getElementById("password-screen").style.display = "none";
                 document.getElementById("main-container").style.display = "flex";
-                initMap();
+                
+                // Initialize map frames safely
+                if (!map) {
+                    map = L.map('map', { center: [43.1465, -80.2630], zoom: 15 });
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+                }
                 buildTestingInterface();
             } else {
                 document.getElementById("error-msg").style.display = "block";
                 document.getElementById("pass-input").value = "";
             }
-        }
+        };
 
-        function initMap() {
-            if (map) return; // Prevent duplicate init loops
-            map = L.map('map', {
-                center: [43.1465, -80.2630],
-                zoom: 15,
-                zoomControl: true
-            });
-            
-            L.tileLayer('https://{s}://{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap'
-            }).addTo(map);
-        }
+        document.getElementById("pass-input").onkeydown = function(e) {
+            if (e.key === "Enter") { document.getElementById("verify-btn").click(); }
+        };
+
+        document.getElementById("btn-reveal").onclick = function() { changeMode('reveal'); };
+        document.getElementById("btn-drag").onclick = function() { changeMode('drag'); };
+        document.getElementById("btn-fill").onclick = function() { changeMode('fill'); };
+        document.getElementById("btn-global-reset").onclick = function() { buildTestingInterface(); };
 
         function changeMode(newMode) {
             activeMode = newMode;
-            
             document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`btn-${newMode}`).classList.add('active');
-
-            if (activeMode === 'drag') {
-                document.getElementById('word-bank-panel').style.display = 'flex';
-            } else {
-                document.getElementById('word-bank-panel').style.display = 'none';
-            }
-
-            buildTestingInterface();
-        }
-
-        function resetBoard() {
+            document.getElementById("btn-" + newMode).classList.add('active');
+            document.getElementById('word-bank-panel').style.display = (activeMode === 'drag') ? 'flex' : 'none';
             buildTestingInterface();
         }
 
@@ -182,7 +158,21 @@
                 streetData.forEach(street => {
                     let customIcon = L.divIcon({
                         className: 'clear-layer',
-                        html: `<div class="map-label-box blank-reveal" id="reveal-${street.id}">???</div>`
+                        html: '<div class="map-label-box blank-reveal" style="cursor:pointer;" id="reveal-' + street.id + '">???</div>'
                     });
                     let marker = L.marker(street.pinCoords, { icon: customIcon }).addTo(map);
                     
+                    marker.on('click', function() {
+                        const box = document.getElementById("reveal-" + street.id);
+                        if (box) {
+                            box.innerText = street.name;
+                            box.classList.remove('blank-reveal');
+                            box.classList.add('revealed');
+                        }
+                    });
+                    labelMarkers.push(marker);
+                });
+            } 
+            else if (activeMode === 'drag') {
+                let shuffledStreets = [...streetData].sort(() => Math.random() - 0.5);
+                shuffledStreets.forEach(street => {
