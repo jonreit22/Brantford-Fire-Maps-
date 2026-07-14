@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Station Response Training Portal</title>
+    <!-- Leaflet Mapping Stylesheet -->
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #111; color: #fff; overflow: hidden; }
+        
+        /* Secure Gatekeeper Screen */
+        #password-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .lock-box { background: #2a2a2a; padding: 40px; border-radius: 8px; border: 2px solid #d9534f; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .lock-box h2 { color: #d9534f; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        .lock-box input { padding: 12px; width: 200px; font-size: 16px; border: none; border-radius: 4px; text-align: center; margin-bottom: 15px; background: #444; color: #fff; }
+        .lock-box button { padding: 12px 24px; font-size: 16px; background: #d9534f; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        #error-msg { color: #ff3333; margin-top: 10px; font-weight: bold; display: none; }
+
+        /* Training Console Layout */
+        #main-container { display: flex; flex-direction: column; width: 100%; height: 100vh; visibility: hidden; }
+        #top-dashboard { background: #222; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #d9534f; }
+        .title-panel h1 { margin: 0; font-size: 20px; color: #d9534f; }
+        .title-panel p { margin: 2px 0 0 0; font-size: 12px; color: #aaa; }
+        
+        /* Mode Switcher Buttons */
+        .mode-btn { background: #333; color: #bbb; border: 1px solid #555; padding: 10px 16px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; margin-right: 5px; transition: 0.2s; }
+        .mode-btn:hover { background: #444; color: #fff; }
+        .mode-btn.active { background: #d9534f; color: white; border-color: #d9534f; }
+        .reset-btn { background: #f0ad4e; color: #111; border: none; padding: 10px 20px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        .reset-btn:hover { background: #ec971f; }
+
+        /* Game Board Area */
+        #workspace { display: flex; flex-grow: 1; width: 100%; height: calc(100vh - 130px); position: relative; }
+        #map { flex-grow: 1; height: 100%; background: #1e1e1e; }
+        
+        /* Word Bank Sidebar */
+        #word-bank-panel { width: 240px; background: #1a1a1a; border-left: 2px solid #333; padding: 15px; display: flex; flex-direction: column; box-sizing: border-box; }
+        #word-bank-panel h3 { margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 8px; font-size: 16px; color: #f0ad4e; }
+        .word-bank-pool { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex-grow: 1; }
+        
+        /* Draggable & Input Elements */
+        .drag-item { background: #333; border: 1px solid #555; padding: 10px; border-radius: 4px; cursor: grab; text-align: center; font-size: 14px; font-weight: 500; user-select: none; }
+        .drag-item:active { cursor: grabbing; background: #444; }
+        
+        /* Custom Map Pin Labels */
+        .map-label-box { background: #222; border: 2px solid #555; border-radius: 4px; padding: 4px 8px; text-align: center; min-width: 100px; color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+        .map-label-box.blank-reveal { background: #292929; border-color: #f0ad4e; cursor: pointer; color: transparent; user-select: none; font-weight: bold; }
+        .map-label-box.blank-reveal:hover { background: #383838; }
+        .map-label-box.revealed { color: #f0ad4e !important; background: #222; border-color: #5cb85c; }
+        
+        .map-label-box input { width: 90px; font-size: 11px; padding: 2px; border: 1px solid #666; background: #333; color: white; text-align: center; border-radius: 2px; }
+        .map-label-box.correct-fill { background: #5cb85c; border-color: #4cae4c; color: white; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <!-- SECURE PASSWORD SCREEN -->
+    <div id="password-screen">
+        <div class="lock-box">
+            <h2>Department Access Only</h2>
+            <p>Enter fire station password to unlock maps:</p>
+            <input type="password" id="pass-input" placeholder="••••••••" onkeydown="if(event.key==='Enter') checkPassword()"><br>
+            <button onclick="checkPassword()">Verify Credentials</button>
+            <p id="error-msg">Access Denied. Incorrect Code.</p>
+        </div>
+    </div>
+
+    <!-- MAIN INTERFACE CONSOLE -->
+    <div id="main-container">
+        <div id="top-dashboard">
+            <div class="title-panel">
+                <h1>Brantford Fire Training</h1>
+                <p>Zone 1BC Street Knowledge Practice</p>
+            </div>
+            <div>
+                <button class="mode-btn active" id="btn-reveal" onclick="changeMode('reveal')">1. Click & Reveal</button>
+                <button class="mode-btn" id="btn-drag" onclick="changeMode('drag')">2. Word Bank Drag</button>
+                <button class="mode-btn" id="btn-fill" onclick="changeMode('fill')">3. Fill in Blanks</button>
+            </div>
+            <div>
+                <button class="reset-btn" onclick="resetBoard()">Reset & Return to Blanks</button>
+            </div>
+        </div>
+
+        <div id="workspace">
+            <div id="map"></div>
+            <div id="word-bank-panel" style="display: none;">
+                <h3>Street Bank</h3>
+                <div class="word-bank-pool" id="drag-pool">
+                    <!-- Words generated automatically by code -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet Script Frame Engine -->
+    <script src="https://unpkg.com"></script>
+    <script>
+        // CHANGE SECURITY PASSWORD HERE (KEEP THE QUOTES!)
+        const DEPT_PASSWORD = "1234"; 
+
+        // Target Street Coordinates inside Zone 1BC (Downtown Brantford Area)
+        const streetData = [
+            { id: "st-paul", name: "St. Paul Ave", pinCoords: [43.1492, -80.2645] },
+            { id: "charing-cross", name: "Charing Cross St", pinCoords: [43.1521, -80.2602] },
+            { id: "brant-ave", name: "Brant Ave", pinCoords: [43.1448, -80.2694] },
+            { id: "west-st", name: "West St", pinCoords: [43.1432, -80.2601] },
+            { id: "grand-st", name: "Grand St", pinCoords: [43.1478, -80.2631] },
+            { id: "dundas-st", name: "Dundas St E", pinCoords: [43.1455, -80.2588] }
+        ];
+
+        let map;
+        let activeMode = 'reveal'; // default mode
+        let labelMarkers = [];
+
+        function checkPassword() {
+            const userInput = document.getElementById("pass-input").value;
+            if (userInput === DEPT_PASSWORD) {
+                document.getElementById("password-screen").style.display = "none";
+                document.getElementById("main-container").style.visibility = "visible";
+                initMap();
+                buildTestingInterface();
+            } else {
+                document.getElementById("error-msg").style.display = "block";
+                document.getElementById("pass-input").value = "";
+            }
+        }
+
+        function initMap() {
+            // Focus directly inside Downtown Brantford Zone 1BC coordinates
+            map = L.map('map', {
+                center: [43.1465, -80.2630],
+                zoom: 15,
+                zoomControl: true
+            });
+            
+            // Standard crisp background map text labels hidden to force memory usage
+            L.tileLayer('https://{s}://{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+        }
+
+        function changeMode(newMode) {
+            activeMode = newMode;
+            
+            // Reset visual toggle states on buttons
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${newMode}`).classList.add('active');
+
+            // Toggle Sidebar for Drag Mode
+            if (activeMode === 'drag') {
+                document.getElementById('word-bank-panel').style.display = 'flex';
+            } else {
+                document.getElementById('word-bank-panel').style.display = 'none';
+            }
+
+            buildTestingInterface();
+        }
+
+        function resetBoard() {
+            buildTestingInterface();
+        }
+
+        function buildTestingInterface() {
+            // Wipe existing map markers clean
+            labelMarkers.forEach(marker => map.removeLayer(marker));
+            labelMarkers = [];
+            
+            const pool = document.getElementById('drag-pool');
+            pool.innerHTML = "";
+
+            // Mode 1: CLICK AND REVEAL
+            if (activeMode === 'reveal') {
+                streetData.forEach(street => {
+                    let customIcon = L.divIcon({
+                        className: 'clear-layer',
+                        html: `<div class="map-label-box blank-reveal" id="reveal-${street.id}" onclick="revealLabel('${street.id}')">???</div>`
+                    });
+                    let marker = L.marker(street.pinCoords, { icon: customIcon }).addTo(map);
+                    labelMarkers.push(marker);
+                });
+            } 
+            
+            // Mode 2: WORD BANK DRAG AND DROP
+            else if (activeMode === 'drag') {
