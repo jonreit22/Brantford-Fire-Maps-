@@ -18,7 +18,7 @@
         #error-msg { color: #ff3333; margin-top: 10px; font-weight: bold; display: none; }
 
         /* Training Console Layout */
-        #main-container { display: flex; flex-direction: column; width: 100%; height: 100vh; visibility: hidden; }
+        #main-container { display: none; flex-direction: column; width: 100%; height: 100vh; }
         #top-dashboard { background: #222; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #d9534f; }
         .title-panel h1 { margin: 0; font-size: 20px; color: #d9534f; }
         .title-panel p { margin: 2px 0 0 0; font-size: 12px; color: #aaa; }
@@ -35,7 +35,7 @@
         #map { flex-grow: 1; height: 100%; background: #1e1e1e; }
         
         /* Word Bank Sidebar */
-        #word-bank-panel { width: 240px; background: #1a1a1a; border-left: 2px solid #333; padding: 15px; display: flex; flex-direction: column; box-sizing: border-box; }
+        #word-bank-panel { width: 240px; background: #1a1a1a; border-left: 2px solid #333; padding: 15px; display: none; flex-direction: column; box-sizing: border-box; }
         #word-bank-panel h3 { margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 8px; font-size: 16px; color: #f0ad4e; }
         .word-bank-pool { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex-grow: 1; }
         
@@ -85,7 +85,7 @@
 
         <div id="workspace">
             <div id="map"></div>
-            <div id="word-bank-panel" style="display: none;">
+            <div id="word-bank-panel">
                 <h3>Street Bank</h3>
                 <div class="word-bank-pool" id="drag-pool">
                     <!-- Words generated automatically by code -->
@@ -117,8 +117,11 @@
         function checkPassword() {
             const userInput = document.getElementById("pass-input").value;
             if (userInput === DEPT_PASSWORD) {
+                // Instantly wipe out lock wall and display layout display grid
                 document.getElementById("password-screen").style.display = "none";
-                document.getElementById("main-container").style.visibility = "visible";
+                document.getElementById("main-container").style.display = "flex";
+                
+                // Initialize map frames safely once visible
                 initMap();
                 buildTestingInterface();
             } else {
@@ -128,14 +131,12 @@
         }
 
         function initMap() {
-            // Focus directly inside Downtown Brantford Zone 1BC coordinates
             map = L.map('map', {
                 center: [43.1465, -80.2630],
                 zoom: 15,
                 zoomControl: true
             });
             
-            // Background dark base layer with map text labels hidden to force memory usage
             L.tileLayer('https://{s}://{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '© OpenStreetMap'
@@ -145,11 +146,9 @@
         function changeMode(newMode) {
             activeMode = newMode;
             
-            // Reset visual toggle states on buttons
             document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`btn-${newMode}`).classList.add('active');
 
-            // Toggle Sidebar for Drag Mode
             if (activeMode === 'drag') {
                 document.getElementById('word-bank-panel').style.display = 'flex';
             } else {
@@ -164,14 +163,12 @@
         }
 
         function buildTestingInterface() {
-            // Wipe existing map markers clean
             labelMarkers.forEach(marker => map.removeLayer(marker));
             labelMarkers = [];
             
             const pool = document.getElementById('drag-pool');
             pool.innerHTML = "";
 
-            // Mode 1: CLICK AND REVEAL
             if (activeMode === 'reveal') {
                 streetData.forEach(street => {
                     let customIcon = L.divIcon({
@@ -182,7 +179,10 @@
                     labelMarkers.push(marker);
                 });
             } 
-            
-            // Mode 2: WORD BANK DRAG AND DROP
             else if (activeMode === 'drag') {
-                // Populate Street Names inside the panel
+                let shuffledStreets = [...streetData].sort(() => Math.random() - 0.5);
+                shuffledStreets.forEach(street => {
+                    const el = document.createElement('div');
+                    el.className = 'drag-item';
+                    el.innerText = street.name;
+                    el.draggable = true;
