@@ -97,8 +97,8 @@
     <!-- Leaflet Script Frame Engine -->
     <script src="https://unpkg.com"></script>
     <script>
-        // CHANGE SECURITY PASSWORD HERE (KEEP THE QUOTES!)
-        const DEPT_PASSWORD = "1234"; 
+        // DEPARTMENT ACCESS SECURITY KEY
+        const DEPT_PASSWORD = "BFD123"; 
 
         // Target Street Coordinates inside Zone 1BC (Downtown Brantford Area)
         const streetData = [
@@ -111,7 +111,7 @@
         ];
 
         let map;
-        let activeMode = 'reveal'; // default mode
+        let activeMode = 'reveal'; 
         let labelMarkers = [];
 
         function checkPassword() {
@@ -135,7 +135,7 @@
                 zoomControl: true
             });
             
-            // Standard crisp background map text labels hidden to force memory usage
+            // Background dark base layer with map text labels hidden to force memory usage
             L.tileLayer('https://{s}://{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '© OpenStreetMap'
@@ -185,3 +185,4 @@
             
             // Mode 2: WORD BANK DRAG AND DROP
             else if (activeMode === 'drag') {
+                // Populate Street Names inside the panel
